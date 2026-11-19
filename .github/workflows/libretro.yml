@@ -1,11 +1,8 @@
 name: citra-libretro
 
+# Fork: upstream multi-platform builds run only when started manually.
+# The Windows build runs automatically from windows.yml.
 on:
-  push:
-    branches: [ "*" ]
-    tags: [ "*" ]
-  pull_request:
-    branches: [ master ]
   workflow_dispatch:
 
 env:
