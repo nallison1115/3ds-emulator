@@ -546,7 +546,7 @@ struct Values {
     // Renderer
     // clang-format off
     SwitchableSetting<GraphicsAPI, true> graphics_api{
-#if defined(ANDROID) && defined(ENABLE_VULKAN) // Prefer Vulkan on Android, OpenGL on everything else
+#if defined(ENABLE_VULKAN) // Prefer Vulkan: lower CPU overhead and async shader compilation
         GraphicsAPI::Vulkan,
 #elif defined(ENABLE_OPENGL)
         GraphicsAPI::OpenGL,
@@ -567,7 +567,7 @@ struct Values {
     Setting<bool> dump_command_buffers{false, Keys::dump_command_buffers};
     SwitchableSetting<bool> spirv_shader_gen{true, Keys::spirv_shader_gen};
     SwitchableSetting<bool> disable_spirv_optimizer{true, Keys::disable_spirv_optimizer};
-    SwitchableSetting<bool> async_shader_compilation{false, Keys::async_shader_compilation};
+    SwitchableSetting<bool> async_shader_compilation{true, Keys::async_shader_compilation};
     SwitchableSetting<bool> async_presentation{true, Keys::async_presentation};
     SwitchableSetting<bool> use_hw_shader{true, Keys::use_hw_shader};
     SwitchableSetting<bool> use_disk_shader_cache{true, Keys::use_disk_shader_cache};
@@ -667,12 +667,12 @@ struct Values {
     SwitchableSetting<bool> custom_textures{false, Keys::custom_textures};
     SwitchableSetting<bool> preload_textures{false, Keys::preload_textures};
     SwitchableSetting<bool> async_custom_loading{true, Keys::async_custom_loading};
-    SwitchableSetting<bool> disable_right_eye_render{false, Keys::disable_right_eye_render};
+    SwitchableSetting<bool> disable_right_eye_render{true, Keys::disable_right_eye_render};
 
     // Audio
     bool audio_muted;
     SwitchableSetting<AudioEmulation> audio_emulation{AudioEmulation::HLE, Keys::audio_emulation};
-    SwitchableSetting<bool> enable_audio_stretching{false, Keys::enable_audio_stretching};
+    SwitchableSetting<bool> enable_audio_stretching{true, Keys::enable_audio_stretching};
     SwitchableSetting<bool> enable_realtime_audio{false, Keys::enable_realtime_audio};
     SwitchableSetting<float, true> volume{1.f, 0.f, 1.f, Keys::volume};
     Setting<AudioCore::SinkType> output_type{AudioCore::SinkType::Auto, Keys::output_type};

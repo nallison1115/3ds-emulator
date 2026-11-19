@@ -555,6 +555,16 @@ GMainWindow::GMainWindow(Core::System& system_)
     physical_devices = GetVulkanPhysicalDevices();
 #endif
 
+#if defined(ENABLE_VULKAN) && defined(ENABLE_OPENGL)
+    // Vulkan is the default renderer. On machines without a usable Vulkan driver
+    // (some older integrated GPUs), fall back to OpenGL instead of failing to boot.
+    if (physical_devices.empty() &&
+        Settings::values.graphics_api.GetValue() == Settings::GraphicsAPI::Vulkan) {
+        LOG_WARNING(Frontend, "No Vulkan device found, falling back to OpenGL");
+        Settings::values.graphics_api = Settings::GraphicsAPI::OpenGL;
+    }
+#endif
+
     if (!game_path.isEmpty()) {
         BootGame(game_path);
     }
