@@ -1,0 +1,85 @@
+# Lean Windows (MSVC) build for this fork.
+#
+# This is separate from the upstream build.yml so the fork has one fast,
+# focused Windows check. It skips FFmpeg (only used for frame dumping) and
+# Discord Rich Presence, which removes the slow vcpkg FFmpeg build.
+# Qt is downloaded automatically by CMake (see CMakeModules/DownloadExternals.cmake).
+name: windows-build
+
+on:
+  push:
+    branches: [ master, "claude/**" ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  msvc:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPILERCHECK: content
+      CCACHE_SLOPPINESS: time_macros
+      CCACHE_MAXSIZE: 2G
+    steps:
+      - name: Disable line ending translation
+        run: git config --global core.autocrlf input
+
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Set up ccache cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: windows-msvc-${{ github.sha }}
+          restore-keys: |
+            windows-msvc-
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install build tools
+        run: choco install -y --no-progress ccache ninja
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DENABLE_FFMPEG=OFF
+          -DENABLE_DISCORD_RPC=OFF
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Bundle
+        run: cmake --build build --target bundle
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: ccache stats
+        if: always()
+        run: ccache -s
+
+      - name: Upload build
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-msvc-${{ github.sha }}
+          path: build/bundle/
+          if-no-files-found: error

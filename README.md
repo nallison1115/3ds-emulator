@@ -78,6 +78,9 @@ The Flatpak build of Azahar also has native Wayland support disabled by default.
 
 # Build instructions
 
+For this fork's Windows build steps, see [docs/building-windows.md](docs/building-windows.md).
+
+
 Please refer this repository's [wiki](https://github.com/azahar-emu/azahar/wiki/Building-From-Source) for build instructions
 
 # How can I contribute?
