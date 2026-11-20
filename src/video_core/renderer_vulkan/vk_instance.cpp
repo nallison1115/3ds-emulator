@@ -131,6 +131,37 @@ std::string GetReadableVersion(u32 version) {
 
 } // Anonymous namespace
 
+u32 Instance::PickPhysicalDevice(std::span<const vk::PhysicalDevice> devices, u32 requested) {
+    const auto rank = [](vk::PhysicalDeviceType type) {
+        switch (type) {
+        case vk::PhysicalDeviceType::eDiscreteGpu:
+            return 3;
+        case vk::PhysicalDeviceType::eIntegratedGpu:
+            return 2;
+        case vk::PhysicalDeviceType::eVirtualGpu:
+            return 1;
+        default: // eCpu, eOther
+            return 0;
+        }
+    };
+
+    if (requested < devices.size() &&
+        devices[requested].getProperties().deviceType != vk::PhysicalDeviceType::eCpu) {
+        return requested;
+    }
+
+    u32 best = requested;
+    int best_rank = 0;
+    for (u32 i = 0; i < static_cast<u32>(devices.size()); i++) {
+        const int device_rank = rank(devices[i].getProperties().deviceType);
+        if (device_rank > best_rank) {
+            best = i;
+            best_rank = device_rank;
+        }
+    }
+    return best;
+}
+
 Instance::Instance(bool enable_validation, bool dump_command_buffers)
     : library{OpenLibrary()},
       instance{CreateInstance(*library, Frontend::WindowSystemType::Headless, enable_validation,
@@ -145,11 +176,19 @@ Instance::Instance(Frontend::EmuWindow& window, u32 physical_device_index)
       debug_callback{CreateDebugCallback(*instance, debug_utils_supported)},
       physical_devices{instance->enumeratePhysicalDevices()} {
     const std::size_t num_physical_devices = static_cast<u16>(physical_devices.size());
-    ASSERT_MSG(physical_device_index < num_physical_devices,
-               "Invalid physical device index {} provided when only {} devices exist",
-               physical_device_index, num_physical_devices);
+    const u32 picked_index = PickPhysicalDevice(physical_devices, physical_device_index);
+    ASSERT_MSG(picked_index < num_physical_devices,
+               "Invalid physical device index {} provided when only {} devices exist", picked_index,
+               num_physical_devices);
+    if (picked_index != physical_device_index) {
+        LOG_WARNING(Render_Vulkan,
+                    "Physical device {} is a software renderer or missing, using hardware GPU {} "
+                    "({}) instead",
+                    physical_device_index, picked_index,
+                    physical_devices[picked_index].getProperties().deviceName.data());
+    }
 
-    physical_device = physical_devices[physical_device_index];
+    physical_device = physical_devices[picked_index];
     available_extensions = GetSupportedExtensions(physical_device);
     properties = physical_device.getProperties();
     if (properties.apiVersion < TargetVulkanApiVersion) {

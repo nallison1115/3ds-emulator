@@ -85,6 +85,9 @@
 #endif
 #include "citra_qt/util/clickable_label.h"
 #include "citra_qt/util/graphics_device_info.h"
+#ifdef ENABLE_VULKAN
+#include "video_core/renderer_vulkan/vk_instance.h"
+#endif
 #include "citra_qt/util/util.h"
 #include "common/arch.h"
 #include "common/common_paths.h"
@@ -553,6 +556,31 @@ GMainWindow::GMainWindow(Core::System& system_)
 
 #ifdef ENABLE_VULKAN
     physical_devices = GetVulkanPhysicalDevices();
+
+    // Don't let a software (CPU) Vulkan device be used when a real GPU is available, and
+    // label software devices in the GPU list.
+    if (!physical_devices.empty()) {
+        try {
+            Vulkan::Instance instance{};
+            const auto devices = instance.GetPhysicalDevices();
+            for (std::size_t i = 0; i < devices.size() && i < physical_devices.size(); i++) {
+                if (devices[i].getProperties().deviceType == vk::PhysicalDeviceType::eCpu) {
+                    physical_devices[i] += tr(" (CPU, slow)");
+                }
+            }
+
+            const u32 requested = Settings::values.physical_device.GetValue();
+            const u32 preferred = Vulkan::Instance::PickPhysicalDevice(devices, requested);
+            if (preferred != requested) {
+                LOG_WARNING(Frontend, "Switching GPU from device {} to hardware device {}",
+                            requested, preferred);
+                Settings::values.physical_device = preferred;
+            }
+        } catch (const std::runtime_error& err) {
+            LOG_ERROR(Frontend, "Error occured while querying for physical devices: {}",
+                      err.what());
+        }
+    }
 #endif
 
 #if defined(ENABLE_VULKAN) && defined(ENABLE_OPENGL)

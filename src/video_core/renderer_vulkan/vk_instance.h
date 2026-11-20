@@ -44,6 +44,11 @@ public:
     explicit Instance(NoInit) {} // For LibRetro inheritance - does minimal setup
     virtual ~Instance();
 
+    /// Returns the device index to use for the requested one. If the requested device is a
+    /// software (CPU) implementation, or doesn't exist, and a hardware GPU is available, the best
+    /// hardware GPU is picked instead (discrete, then integrated, then virtual).
+    static u32 PickPhysicalDevice(std::span<const vk::PhysicalDevice> devices, u32 requested);
+
     /// Returns the FormatTraits struct for the provided pixel format
     const FormatTraits& GetTraits(VideoCore::PixelFormat pixel_format) const;
     const FormatTraits& GetTraits(VideoCore::CustomPixelFormat pixel_format) const;
