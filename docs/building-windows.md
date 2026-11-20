@@ -1,5 +1,25 @@
 # Building on Windows
 
+## Just want to run it?
+
+You don't have to build anything. Every change merged to `master` is built
+automatically and published on the
+[Releases page](https://github.com/nallison1115/3ds-emulator/releases):
+
+- **Latest development build**: replaced on every push to `master`.
+- **Versioned releases** (for example `v0.1.0`): permanent snapshots.
+
+Download the `.zip`, extract it anywhere, and run `azahar.exe`.
+
+To publish a versioned release, create and push a tag:
+
+```bat
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+## Building it yourself
+
 This fork builds with **Visual Studio 2022 (MSVC) + CMake + Ninja**. That is the
 setup the `windows-build` GitHub Actions workflow uses, so it is the one that is
 known to work. You need about 15 GB of free disk space.
