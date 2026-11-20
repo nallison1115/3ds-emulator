@@ -9,6 +9,7 @@ name: windows-build
 on:
   push:
     branches: [ master, "claude/**" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ master ]
   workflow_dispatch:
@@ -83,3 +84,53 @@ jobs:
           name: windows-msvc-${{ github.sha }}
           path: build/bundle/
           if-no-files-found: error
+
+  # Publishes the build to the repo's Releases page.
+  # - Every push to master replaces the "latest" pre-release (a rolling dev build).
+  # - Pushing a tag like v0.1.0 creates a permanent, versioned release.
+  release:
+    needs: msvc
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download build
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-msvc-${{ github.sha }}
+          path: azahar-windows
+
+      - name: Zip build
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            NAME="azahar-windows-msvc-${GITHUB_REF_NAME}"
+          else
+            NAME="azahar-windows-msvc-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+          fi
+          mv azahar-windows "$NAME"
+          zip -qr "$NAME.zip" "$NAME"
+          echo "ZIP=$NAME.zip" >> "$GITHUB_ENV"
+
+      - name: Publish rolling "latest" pre-release
+        if: github.ref == 'refs/heads/master'
+        run: |
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest "$ZIP" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Latest development build" \
+            --notes "Automatic Windows build of master at ${GITHUB_SHA::7}. Download the zip, extract it anywhere, and run azahar.exe. This release is replaced on every push to master."
+
+      - name: Publish versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ZIP" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
