@@ -2,6 +2,7 @@
 // Licensed under GPLv2 or any later version
 // Refer to the misc/licenses/gplv2.txt file included.
 
+#include <QObject>
 #include "citra_qt/util/graphics_device_info.h"
 
 #ifdef ENABLE_OPENGL
@@ -38,7 +39,11 @@ std::vector<QString> GetVulkanPhysicalDevices() {
         const auto physical_devices = instance.GetPhysicalDevices();
 
         for (const vk::PhysicalDevice physical_device : physical_devices) {
-            const QString name = QString::fromUtf8(physical_device.getProperties().deviceName, -1);
+            const auto properties = physical_device.getProperties();
+            QString name = QString::fromUtf8(properties.deviceName, -1);
+            if (properties.deviceType == vk::PhysicalDeviceType::eCpu) {
+                name += QObject::tr(" (CPU, slow)");
+            }
             result.push_back(name);
         }
     } catch (const std::runtime_error& err) {
@@ -46,5 +51,15 @@ std::vector<QString> GetVulkanPhysicalDevices() {
     }
 
     return result;
+}
+
+u32 GetPreferredVulkanPhysicalDevice(u32 requested) {
+    try {
+        Vulkan::Instance instance{};
+        return Vulkan::Instance::PickPhysicalDevice(instance.GetPhysicalDevices(), requested);
+    } catch (const std::runtime_error& err) {
+        LOG_ERROR(Frontend, "Error occured while querying for physical devices: {}", err.what());
+    }
+    return requested;
 }
 #endif

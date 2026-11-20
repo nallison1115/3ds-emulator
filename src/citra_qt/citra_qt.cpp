@@ -553,6 +553,17 @@ GMainWindow::GMainWindow(Core::System& system_)
 
 #ifdef ENABLE_VULKAN
     physical_devices = GetVulkanPhysicalDevices();
+
+    // Don't let a software (CPU) Vulkan device be used when a real GPU is available.
+    if (!physical_devices.empty()) {
+        const u32 requested = Settings::values.physical_device.GetValue();
+        const u32 preferred = GetPreferredVulkanPhysicalDevice(requested);
+        if (preferred != requested) {
+            LOG_WARNING(Frontend, "Switching GPU from device {} to hardware device {}", requested,
+                        preferred);
+            Settings::values.physical_device = preferred;
+        }
+    }
 #endif
 
 #if defined(ENABLE_VULKAN) && defined(ENABLE_OPENGL)
